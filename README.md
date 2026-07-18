@@ -3,21 +3,23 @@
 ## Stack 
 - Language: Python 3.11
 - Queue: Redis + Celery (workers scaled via `docker compose up --scale worker=N`)
-- DB: SQLite (file-based, no separate container — versioned by row, not overwritten)
-- Vector store: Chroma, running embedded in-process (no server container)
-- LLM: Ollama, running locally (`llama3.2:1b` for generation, `nomic-embed-text` for embeddings) (Might change later)
+- Database: **PostgreSQL + pgvector** — one database for both relational data
+  (raw/cleaned pages, versioned by row) and vector embeddings, via the
+  `pgvector/pgvector:pg16` Docker image. No separate vector store needed.
+- LLM: Ollama, running locally (`llama3.2:1b` for generation, `nomic-embed-text` for embeddings)
 - API: FastAPI
 - UI: React via CDN (no npm/node_modules — kept light on disk/RAM)
 - Scraping: `requests` + BeautifulSoup (static), Playwright + Chromium (JS-rendered)
 - CI: GitHub Actions (lint + test on every push)
 
 ## Why these choices 
-- **SQLite over Postgres**: no extra container/daemon running in the background;
-  fine for a project of this scale; tradeoff is it doesn't handle concurrent
-  writes as well, which matters less here since only workers write and API mostly reads.
-- **Chroma embedded over a Chroma/Pinecone/Weaviate server**: removes a whole
-  container from the stack; tradeoff is it can't be queried by multiple
-  processes over the network the way a server-mode vector DB could.
+- **Postgres+pgvector over a dedicated vector DB (Chroma/Pinecone/Weaviate)**:
+  keeps relational data and embeddings in one database and one transaction
+  boundary — a chunk and its source page can never get out of sync, and
+  there's one fewer moving part to run/debug. It's plain Postgres with an
+  extension, not a new system to learn. Tradeoff: at very large scale (100M+
+  vectors) a dedicated vector DB or `pgvectorscale` can out-perform plain
+  pgvector — not a concern at this project's scale.
 - **Ollama over OpenAI/Anthropic API**: zero cost, no API key, works offline;
   tradeoff is materially lower answer quality than a hosted frontier model.
 - **Overlap-based chunking over fixed-length**: prevents a fact from being
@@ -28,14 +30,24 @@
 ```bash
 git clone https://github.com/Dannaas04/ONRAMP-SCRAPER-RAG.git
 cd ONRAMP-SCRAPER-RAG
-docker compose up -d redis ollama
+docker compose up -d redis postgres ollama
 docker exec -it scraper-rag-ollama-1 ollama pull llama3.2:1b
 docker exec -it scraper-rag-ollama-1 ollama pull nomic-embed-text
 docker compose up --build
 ```
 
+The `vector` extension and all tables (including the pgvector `Vector`
+column) are created automatically on API/worker startup via `init_db()` —
+no manual SQL needed.
+
 Open the UI: just open `frontend/index.html` directly in your browser (no
 build step needed). API docs: http://localhost:8000/docs
+
+To inspect the database directly:
+```bash
+docker exec -it scraper-rag-postgres-1 psql -U scraper -d scraper_rag
+# then: \dt   (list tables)   or   SELECT url, chunk_index FROM chunk LIMIT 5;
+```
 
 ## Demonstrating horizontal scaling 
 
@@ -55,12 +67,7 @@ docker compose up --scale worker=3 -d
 # submit a URL that will 404 or an unreachable host to see retries in worker logs
 curl -X POST localhost:8000/scrape -d '{"url":"http://localhost:9999/nope"}' -H "Content-Type: application/json"
 # after 3 retries with backoff, check the dead-letter table:
-docker exec -it scraper-rag-api-1 python -c "
-from app.db import get_session, DeadLetter
-from sqlmodel import select
-with get_session() as s:
-    print(s.exec(select(DeadLetter)).all())
-"
+docker exec -it scraper-rag-postgres-1 psql -U scraper -d scraper_rag -c "SELECT * FROM deadletter;"
 ```
 
 ## Testing pagination / large-site target
