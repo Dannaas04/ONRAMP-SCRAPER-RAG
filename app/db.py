@@ -18,7 +18,7 @@ class Page(SQLModel, table=True):
     content_hash: str = Field(index=True)
     raw_html: str
     cleaned_text: str
-    source_type: str 
+    source_type: str
     fetched_at: datetime = Field(default_factory=datetime.utcnow)
     is_duplicate_of_latest: bool = False
 

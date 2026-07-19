@@ -8,7 +8,7 @@ DATABASE_URL = os.getenv(
 
 EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
 GEN_MODEL = os.getenv("GEN_MODEL", "llama3.2:1b")
-EMBED_DIM = 768  
+EMBED_DIM = 768
 
-CHUNK_SIZE = 500       
+CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50

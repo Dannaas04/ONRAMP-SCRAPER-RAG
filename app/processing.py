@@ -12,7 +12,6 @@ def clean_html(raw_html: str) -> str:
     for tag in soup(["script", "style", "nav", "footer", "header", "noscript"]):
         tag.decompose()
 
-    
     tables_text = []
     for table in soup.find_all("table"):
         rows = []
@@ -22,7 +21,7 @@ def clean_html(raw_html: str) -> str:
                 rows.append(" | ".join(cells))
         if rows:
             tables_text.append("\n".join(rows))
-        table.decompose()  
+        table.decompose()
 
     body_text = soup.get_text(separator=" ", strip=True)
 
@@ -84,5 +83,5 @@ def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]
         chunks.append(chunk)
         if end >= len(words):
             break
-        start = end - overlap  
+        start = end - overlap
     return chunks

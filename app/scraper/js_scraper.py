@@ -12,11 +12,11 @@ def fetch_js_rendered(url: str, wait_ms: int = 1500) -> dict:
     wait_for_politeness(url)
 
     with sync_playwright() as p:
-       
+
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         page.goto(url, timeout=20000)
-        page.wait_for_timeout(wait_ms) 
+        page.wait_for_timeout(wait_ms)
         html = page.content()
         title = page.title()
         browser.close()

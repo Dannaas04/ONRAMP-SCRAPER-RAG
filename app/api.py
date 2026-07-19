@@ -12,7 +12,7 @@ init_db()
 
 class ScrapeRequest(BaseModel):
     url: str
-    source_type: str = "static"  
+    source_type: str = "static"
 
 
 class QueryRequest(BaseModel):

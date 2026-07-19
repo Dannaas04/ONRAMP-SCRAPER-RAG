@@ -6,7 +6,7 @@ MAX_PAGES_DEFAULT = 500
 
 
 def discover_paginated_urls(start_url: str, next_link_selector: str,
-                             max_pages: int = MAX_PAGES_DEFAULT) -> list[str]:
+                            max_pages: int = MAX_PAGES_DEFAULT) -> list[str]:
     """Follows a 'next page' link (CSS selector) repeatedly to build a list
     of URLs to enqueue. Kept separate from actual fetching so discovery
     can be capped/aborted without wasting scrape work.
@@ -24,7 +24,7 @@ def discover_paginated_urls(start_url: str, next_link_selector: str,
             break
         next_url = next_tag["href"]
         if next_url in urls:
-            break  
+            break
         urls.append(next_url)
         current = next_url
 

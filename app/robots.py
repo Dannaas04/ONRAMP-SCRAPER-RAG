@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 _parsers = {}
 _last_fetch = {}
 
-MIN_DELAY_SECONDS = 1.0  
+MIN_DELAY_SECONDS = 1.0
 
 
 def _get_parser(url: str) -> robotparser.RobotFileParser:
@@ -16,7 +16,7 @@ def _get_parser(url: str) -> robotparser.RobotFileParser:
         try:
             rp.read()
         except Exception:
-          
+
             pass
         _parsers[domain] = rp
     return _parsers[domain]
