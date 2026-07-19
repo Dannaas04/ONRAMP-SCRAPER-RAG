@@ -1,0 +1,66 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    mem_limit: 128m
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      - POSTGRES_USER=scraper
+      - POSTGRES_PASSWORD=scraper
+      - POSTGRES_DB=scraper_rag
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scraper -d scraper_rag"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    command: uvicorn app.api:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./app:/code/app
+      - ./data:/code/data
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - DATABASE_URL=postgresql://scraper:scraper@postgres:5432/scraper_rag
+    depends_on:
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    mem_limit: 512m
+
+  worker:
+    build: .
+    command: celery -A app.tasks worker --loglevel=info --concurrency=2
+    volumes:
+      - ./app:/code/app
+      - ./data:/code/data
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - DATABASE_URL=postgresql://scraper:scraper@postgres:5432/scraper_rag
+    depends_on:
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    deploy:
+      replicas: 1   
+    mem_limit: 768m
+
+volumes:
+  pg_data:
