@@ -16,7 +16,7 @@ def test_content_hash_is_deterministic():
 def test_chunk_text_overlap():
     words = " ".join(f"w{i}" for i in range(1000))
     chunks = chunk_text(words, chunk_size=500, overlap=50)
-    assert len(chunks) == 2
+    assert len(chunks) == 3
    
     tail = chunks[0].split()[-50:]
     head = chunks[1].split()[:50]
