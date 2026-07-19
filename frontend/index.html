@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Scraper RAG UI</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 700px; margin: 40px auto; }
+  input { width: 70%; padding: 8px; }
+  button { padding: 8px 16px; }
+  .result { border: 1px solid #ddd; padding: 10px; margin-top: 8px; border-radius: 6px; }
+  .sources { font-size: 0.85em; color: #555; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState } = React;
+const API_BASE = "http://localhost:8000";
+
+function App() {
+  const [query, setQuery] = useState("");
+  const [answer, setAnswer] = useState(null);
+  const [searchResults, setSearchResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  async function handleAsk() {
+    setLoading(true);
+    setAnswer(null);
+    try {
+      const res = await fetch(`${API_BASE}/ask`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, top_k: 5 }),
+      });
+      const data = await res.json();
+      setAnswer(data);
+    } catch (e) {
+      setAnswer({ answer: "Error contacting API: " + e.message, sources: [] });
+    }
+    setLoading(false);
+  }
+
+  async function handleSearch() {
+    const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
+    const data = await res.json();
+    setSearchResults(data);
+  }
+
+  return (
+    <div>
+      <h2>Distributed RAG Scraper — Demo UI</h2>
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Ask a question about the scraped content..."
+      />
+      <button onClick={handleAsk} disabled={loading}>
+        {loading ? "Thinking..." : "Ask"}
+      </button>
+      <button onClick={handleSearch}>Semantic Search</button>
+
+      {answer && (
+        <div className="result">
+          <strong>Answer:</strong>
+          <p>{answer.answer}</p>
+          <div className="sources">
+            Sources: {answer.sources.map((s) => (
+              <div key={s}><a href={s} target="_blank">{s}</a></div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {searchResults.length > 0 && (
+        <div>
+          <h3>Search results</h3>
+          {searchResults.map((r, i) => (
+            <div className="result" key={i}>
+              <p>{r.text.slice(0, 200)}...</p>
+              <div className="sources">{r.url}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
