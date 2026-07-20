@@ -1,22 +1,32 @@
-FROM python:3.11-slim
+FROM python:3.11-bookworm
 
 WORKDIR /code
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget gnupg curl \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir --timeout 120 --retries 15 \
-    fastapi==0.115.0 uvicorn[standard]==0.30.6 httpx==0.27.2 tenacity==9.0.0
-RUN pip install --no-cache-dir --timeout 120 --retries 15 \
-    celery==5.4.0 redis==5.0.8 requests==2.32.3 beautifulsoup4==4.12.3
-RUN pip install --no-cache-dir --timeout 120 --retries 15 \
-    sqlmodel==0.0.22 psycopg2-binary==2.9.9 pgvector==0.3.6
-RUN pip install --no-cache-dir --timeout 120 --retries 15 \
-    playwright==1.47.0
-RUN python -m playwright install chromium
+RUN pip install --no-cache-dir -r requirements.txt
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libnss3 \
+    libnspr4 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libdbus-1-3 \
+    libxkbcommon0 \
+    libatspi2.0-0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    libglib2.0-0 \
+    libgtk-3-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN playwright install chromium
 
 COPY app ./app
 
