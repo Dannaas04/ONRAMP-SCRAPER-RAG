@@ -5,7 +5,7 @@ from sqlmodel import select
 from app.db import init_db, get_session, Page
 from app.tasks import scrape_url
 from app.rag import retrieve, generate_answer
-
+from app.scraper.paginated_scraper import discover_paginated_urls
 app = FastAPI(title="Distributed RAG Scraper API")
 init_db()
 
@@ -19,6 +19,20 @@ class QueryRequest(BaseModel):
     query: str
     top_k: int = 5
 
+class DiscoverRequest(BaseModel):
+    start_url: str
+    next_link_selector: str
+    max_pages: int = 30
+
+
+@app.post("/discover-and-enqueue")
+def discover_and_enqueue(req: DiscoverRequest):
+    """Walks the 'next page' link to build a URL list (the pagination /
+    large-site requirement), then enqueues every discovered URL onto the
+    distributed worker pool in one call."""
+    urls = discover_paginated_urls(req.start_url, req.next_link_selector, req.max_pages)
+    task_ids = [scrape_url.delay(u, "static").id for u in urls]
+    return {"discovered": len(urls), "urls": urls, "task_ids": task_ids}
 
 @app.post("/scrape")
 def enqueue_scrape(req: ScrapeRequest):

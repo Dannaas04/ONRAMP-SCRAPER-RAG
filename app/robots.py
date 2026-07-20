@@ -2,22 +2,40 @@ import time
 import urllib.robotparser as robotparser
 from urllib.parse import urlparse
 
+import requests
+
 _parsers = {}
 _last_fetch = {}
 
-MIN_DELAY_SECONDS = 1.0
+MIN_DELAY_SECONDS = 1.0  
+
+
+ROBOTS_FETCH_HEADERS = {
+    "User-Agent": "ScraperRAGBot/1.0 (student project; contact: danasayegh49@gmail.com)"
+}
 
 
 def _get_parser(url: str) -> robotparser.RobotFileParser:
     domain = urlparse(url).netloc
     if domain not in _parsers:
+        robots_url = f"{urlparse(url).scheme}://{domain}/robots.txt"
         rp = robotparser.RobotFileParser()
-        rp.set_url(f"{urlparse(url).scheme}://{domain}/robots.txt")
-        try:
-            rp.read()
-        except Exception:
+        rp.set_url(robots_url)
 
-            pass
+        try:
+            resp = requests.get(robots_url, headers=ROBOTS_FETCH_HEADERS, timeout=10)
+            if resp.status_code == 200:
+                rp.parse(resp.text.splitlines())
+            elif 400 <= resp.status_code < 500:
+               
+                rp.allow_all = True
+            else:
+  
+                rp.allow_all = True
+        except Exception:
+          
+            rp.allow_all = True
+
         _parsers[domain] = rp
     return _parsers[domain]
 

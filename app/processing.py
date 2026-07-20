@@ -35,8 +35,14 @@ def clean_html(raw_html: str) -> str:
 def content_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
-
-def save_page_version(url: str, raw_html: str, source_type: str) -> Page:
+def get_latest_page(url: str) -> Page | None:
+    """Used before scraping to fetch prior etag/last_modified for conditional GET."""
+    with get_session() as session:
+        return session.exec(
+            select(Page).where(Page.url == url).order_by(Page.fetched_at.desc())
+        ).first()
+    
+def save_page_version(url: str, raw_html: str, source_type: str,  etag: str = None, last_modified: str = None) -> Page:
     """Saves a new row only if content actually changed since the last crawl
     of this URL — this is incremental-recrawl + versioning behavior."""
     cleaned = clean_html(raw_html)
@@ -56,6 +62,8 @@ def save_page_version(url: str, raw_html: str, source_type: str) -> Page:
             content_hash=h,
             source_type=source_type,
             is_duplicate_of_latest=is_dup,
+            etag=etag,
+            last_modified=last_modified,
         )
         session.add(page)
         session.commit()

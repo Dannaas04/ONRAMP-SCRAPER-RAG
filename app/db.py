@@ -21,6 +21,8 @@ class Page(SQLModel, table=True):
     source_type: str
     fetched_at: datetime = Field(default_factory=datetime.utcnow)
     is_duplicate_of_latest: bool = False
+    etag: Optional[str] = None           
+    last_modified: Optional[str] = None  
 
 
 class Chunk(SQLModel, table=True):
