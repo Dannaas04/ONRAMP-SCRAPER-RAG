@@ -22,7 +22,8 @@ class Page(SQLModel, table=True):
     fetched_at: datetime = Field(default_factory=datetime.utcnow)
     is_duplicate_of_latest: bool = False
     etag: Optional[str] = None           
-    last_modified: Optional[str] = None  
+    last_modified: Optional[str] = None 
+    linked_documents: Optional[str] = None  
 
 
 class Chunk(SQLModel, table=True):
@@ -46,13 +47,19 @@ class DeadLetter(SQLModel, table=True):
 
 
 def init_db():
+
     with engine.connect() as conn:
         try:
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             conn.commit()
         except IntegrityError:
             conn.rollback()
-    SQLModel.metadata.create_all(engine)
+
+    try:
+        SQLModel.metadata.create_all(engine)
+    except IntegrityError:
+
+        pass
 
 
 def get_session():
