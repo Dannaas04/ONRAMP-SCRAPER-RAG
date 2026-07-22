@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlmodel import select
-
+import json
 from app.db import init_db, get_session, Page
 from app.tasks import scrape_url
 from app.rag import retrieve, generate_answer
@@ -63,6 +63,27 @@ def page_versions(url: str):
             raise HTTPException(404, "No crawls found for this URL")
         return versions
 
+@app.get("/pages/{url:path}/processed")
+def processed_page(url: str):
+    """Returns the normalized/structured breakdown of the latest crawl of a
+    URL -- body text, extracted tables, and linked documents -- demonstrating
+    content was separated by type rather than stored as one blob."""
+    with get_session() as session:
+        latest = session.exec(
+            select(Page).where(Page.url == url).order_by(Page.fetched_at.desc())
+        ).first()
+        if not latest:
+            raise HTTPException(404, "No crawls found for this URL")
+
+        body_and_tables = latest.cleaned_text.split("\n\n[TABLES]\n", 1)
+        return {
+            "url": latest.url,
+            "source_type": latest.source_type,
+            "fetched_at": latest.fetched_at,
+            "body_text": body_and_tables[0],
+            "tables": body_and_tables[1].split("\n\n") if len(body_and_tables) > 1 else [],
+            "linked_documents": json.loads(latest.linked_documents or "[]"),
+        }
 
 @app.get("/search")
 def semantic_search(q: str, top_k: int = 5):
